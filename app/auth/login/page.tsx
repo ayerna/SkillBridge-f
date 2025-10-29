@@ -15,7 +15,7 @@ import Link from "next/link"
 import { Mail, Chrome } from "lucide-react"
 import { initializeAdminAccount } from "@/app/actions/admin-actions"
 
-const ADMIN_EMAIL = "admin@admin.com"
+const ADMIN_EMAIL = "gladwin.xi.nm@gmail.com"
 const ADMIN_PASSWORD = "admin@123"
 
 const TEST_ACCOUNTS = [
