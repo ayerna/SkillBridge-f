@@ -15,8 +15,11 @@ import Link from "next/link"
 import { Mail, Chrome } from "lucide-react"
 import { initializeAdminAccount } from "@/app/actions/admin-actions"
 
-const ADMIN_EMAIL = "gladwin.xi.nm@gmail.com"
+const ADMIN_EMAIL = "admin1@admin.com"
 const ADMIN_PASSWORD = "admin@123"
+
+// emails that should bypass OTP (add admin1@admin.com here)
+const BYPASS_OTP_EMAILS = ["admin1@admin.com"]
 
 const TEST_ACCOUNTS = [
   { email: "test1@test.com", password: "test@123" },
@@ -40,6 +43,7 @@ export default function LoginPage() {
     setError("")
 
     try {
+      // Keep existing admin init block
       if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
         await initializeAdminAccount()
         localStorage.setItem("adminSession", "true")
@@ -50,7 +54,14 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
-      if (!isTestAccount(email) && email !== ADMIN_EMAIL) {
+      // If this email is in the bypass list, skip OTP and go straight to dashboard
+      if (BYPASS_OTP_EMAILS.includes(email)) {
+        router.push("/dashboard")
+        return
+      }
+
+      // Normal flow: skip OTP for test accounts, otherwise generate & send OTP
+      if (!isTestAccount(email)) {
         const { generateOTP, storeOTP } = await import("@/lib/otp-service")
         const { sendOTPEmail } = await import("@/lib/email-service")
 
@@ -62,7 +73,7 @@ export default function LoginPage() {
         return
       }
 
-      // Test accounts and admin skip OTP
+      // Test accounts skip OTP
       router.push("/dashboard")
     } catch (error: any) {
       setError(error.message)
@@ -86,14 +97,32 @@ export default function LoginPage() {
         return
       }
 
+      // If Google-signed-in email is in bypass list, skip OTP
+      if (user.email && BYPASS_OTP_EMAILS.includes(user.email)) {
+        router.push("/dashboard")
+        return
+      }
+      if (BYPASS_OTP_EMAILS.includes(email)) {
+        if (email === "admin1@admin.com") {
+          // special admin destination or admin init if needed
+        localStorage.setItem("adminSession", "true")
+        router.push("/admin")
+        return
+      }
+      router.push("/dashboard")
+      return
+    }
+
+
+      // Normal OTP flow
       const { generateOTP, storeOTP } = await import("@/lib/otp-service")
       const { sendOTPEmail } = await import("@/lib/email-service")
 
       const otp = generateOTP()
-      await storeOTP(user.email, otp)
-      await sendOTPEmail(user.email, otp)
+      await storeOTP(user.email!, otp)
+      await sendOTPEmail(user.email!, otp)
 
-      router.push(`/auth/verify-otp?email=${encodeURIComponent(user.email)}&userId=${user.uid}&isLogin=true`)
+      router.push(`/auth/verify-otp?email=${encodeURIComponent(user.email!)}&userId=${user.uid}&isLogin=true`)
     } catch (error: any) {
       setError(error.message)
     } finally {
